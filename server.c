@@ -30,17 +30,15 @@ void log_request(char *str) {
     printf("%s\n", str);
 }
 
-
 /* removes the pid-file from current dir and kills all child processes */
 void int_handler(int sig) {
-    int i, pid;
+    int i;
 
     /* kill children first */
     for(i=0; i<MAX_CHILDS; i++) {
-        pid = child_pids[i];
-        if(pid){
-            printf("killing child %d\n", pid);
-            if (kill(pid, sig)) {
+        if(child_pids[i]){
+            printf("killing child %d\n", child_pids[i]);
+            if (kill(child_pids[i], sig)) {
                 perror("Kill failed\n");
             }
         }
@@ -50,6 +48,8 @@ void int_handler(int sig) {
     unlink(FNAME_PID);
 }
 
+/* Child handler that catches SIGCHLD and removes the childs
+ * PID from the list when it is finished */ 
 void child_handler(int sig) {
     int i, pid, status; 
 
@@ -119,9 +119,9 @@ void stop() {
 
 void serve(int port) {
 
-    char msg[80];
     int i, child_pid;
-    int server_sockfd, client_sockfd, client_len;
+    int server_sockfd, client_sockfd;
+    socklen_t client_len;
     struct sockaddr_in server_addr, client_addr;
 
     /* install SIGCHLD handler to respond to finishing childs */
@@ -179,8 +179,6 @@ void serve(int port) {
         }
 
         close(client_sockfd);
-        /* signal(SIGINT, my_int_handler); */
-        /* wait(NULL); */
 
     }
 }
@@ -188,10 +186,10 @@ void serve(int port) {
 /*  ############## MAIN ############### */
 int main(int argc, char **argv){
 
-    enum{CMD=1};
+    enum{ CMD=1 };
 
     /* need at least one argument */
-    if (argc < 2 ) return -1;
+    if ( argc < 2 ) return -1;
 
     /************  START  *************/
     if(strcmp(argv[CMD], "start") == 0) {
@@ -210,5 +208,7 @@ int main(int argc, char **argv){
         printf("Try: ./server start | status | stop\n");
         return -1;
     }
+
+    return 0;
 }
 
