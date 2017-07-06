@@ -5,6 +5,17 @@
 #include <dirent.h>
 #include <fcntl.h>
 
+/** 
+ *
+ *  GET /index... HTTP1... \r\n 
+ *  ... 
+ *  ... 
+ *  \r\n\r\n
+ *
+ */
+
+/* strstr find substring 
+ * move last 3 chars to beginning of new read */
 
 char *LINE_BREAK = "\r\n";
 

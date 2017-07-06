@@ -9,6 +9,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include "utils.h"
+
 
 #define MAX_CHILDS 17
 #define FNAME_PID "server.pid"
@@ -171,7 +173,9 @@ void serve(int port) {
         if (child_pid == 0) {
             close(server_sockfd);
 
+
             /* TODO STUFF */
+            /* decode / split / do_get */
             printf("meow meow meoooow\n");
             sleep(3);
 

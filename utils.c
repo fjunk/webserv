@@ -2,16 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-char* percent_decode(const char* str);
-int next_token_idx(const char *str, int start_idx);
-
-struct request {
-    char *req_str;      /* the whole request str */
-    char *method;           /* http method i.e. GET */
-    char *res_path;    /* requested file, i.e. index.html */
-    char *protocol;         /* http protocol version i.e. HTPP/1.0 */
-};
+#include "utils.h"
 
 
 /* Takes a string containing a request and a request-struct and fills
@@ -20,15 +11,24 @@ void split_request(const char *request_str, struct request *request) {
 
     char *decoded_request = percent_decode(request_str);
 
-    int path_idx, prot_idx, i;
+    int ress_idx, prot_idx, i;
     int str_len = strlen(decoded_request);
 
+    /* calculate start index of next token */
+    ress_idx = next_token_idx(decoded_request, 0);
+    prot_idx = next_token_idx(decoded_request, ress_idx);
+
+    /* set values to request struct */
     request->req_str  = strdup(decoded_request);
     request->method   = request->req_str;
-    request->res_path = (request->req_str) + path_idx;
+    request->ressource = (request->req_str) + ress_idx;
     request->protocol = (request->req_str) + prot_idx;
+
+    free(decoded_request);
     
-    /* replace all spaces in the base-str with \0 */
+    /* replace all spaces in the base-str with \0 to 
+     * be able to read the substrings as strings since they
+     * are terminated */
     for ( i = 0; i < str_len; i++ ) {
         if(request->req_str[i] == ' ')
             request->req_str[i] = '\0';
@@ -86,3 +86,24 @@ char* percent_decode(const char* str){
 
     return decoded;
 }
+
+/*** TEST 
+void main() {
+
+    const char *test_request = "GET%20/index.html%20HTTP/1.0";
+    struct request* req = malloc(sizeof(struct request));
+
+    split_request(test_request, req);
+
+    printf("%s\n", req->req_str);
+    printf("%s\n", req->method);
+    printf("%s\n", req->ressource);
+    printf("%s\n", req->protocol);
+    
+    printf("%s\n", test_request);
+
+    free(req->req_str);
+    free(req);
+
+}
+***/ 

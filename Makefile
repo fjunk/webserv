@@ -23,7 +23,7 @@ process.o: process.c
 	$(CC) $(CFLAGS) -c process.c
 
 
-utils.o: utils.c
+utils.o: utils.c utils.h
 	$(CC) $(CFLAGS) -c utils.c
 
 
