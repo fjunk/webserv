@@ -39,16 +39,15 @@ void read_request(int read_fd){
         if (did_read == 0) {
 
             str_end = strstr(buffer, LINE_BREAK);
-            str_end = '\0';
-            printf("%s\n", buffer);
-
+            if(str_end) {
+                *str_end = '\0';
+                printf("%s\n", buffer);
+            }
             break;
         } else if (did_read < 0) {
             perror("readerror");
         }
-
     }
-
 }
 
 
