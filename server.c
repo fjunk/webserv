@@ -48,7 +48,8 @@ void int_handler(int sig) {
     }
     /* remove PID-file */
     printf("removing %s!\n", FNAME_PID);
-    unlink(FNAME_PID);
+    remove(FNAME_PID);
+    _exit(-1);
 }
 
 /* Child handler that catches SIGCHLD and removes the childs
@@ -131,6 +132,7 @@ void serve(int port) {
 
     /* install SIGCHLD handler to respond to finishing childs */
     signal(SIGCHLD, child_handler);
+    signal(SIGINT, int_handler);
 
     /* set type, port and listen on all interfaces */
     server_addr.sin_family = AF_INET;
