@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 
 #include "utils.h"
+#include "process.h"
 
 
 #define MAX_CHILDS 17
@@ -125,6 +126,8 @@ void serve(int port) {
     int server_sockfd, client_sockfd;
     socklen_t client_len;
     struct sockaddr_in server_addr, client_addr;
+    struct request *request;
+    char *request_str;
 
     /* install SIGCHLD handler to respond to finishing childs */
     signal(SIGCHLD, child_handler);
@@ -174,10 +177,15 @@ void serve(int port) {
             close(server_sockfd);
 
 
+            request_str = read_request(client_sockfd);
             /* TODO STUFF */
+            /*
+            request = malloc(sizeof(struct request));
+            split_request(request_str, request);
+            */
+
             /* decode / split / do_get */
-            printf("meow meow meoooow\n");
-            sleep(3);
+            printf("%s\n", request_str);
 
             exit(1);
         }

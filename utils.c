@@ -87,7 +87,7 @@ char* percent_decode(const char* str){
     return decoded;
 }
 
-/*** TEST 
+/*
 void main() {
 
     const char *test_request = "GET%20/index.html%20HTTP/1.0";
@@ -106,4 +106,4 @@ void main() {
     free(req);
 
 }
-***/ 
+*/

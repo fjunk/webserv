@@ -19,7 +19,7 @@ get.o: get.c
 percent.o: percent.c percent.h
 	$(CC) $(CFLAGS) -c percent.c 
 
-process.o: process.c 
+process.o: process.c process.h
 	$(CC) $(CFLAGS) -c process.c
 
 
