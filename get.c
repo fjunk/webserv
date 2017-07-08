@@ -7,19 +7,11 @@
 #include <fcntl.h>
 #include <stdarg.h>
 
+#include "utils.h"
 
 /* function prototypes */
 void do_get(const char *res_path, int fd);
-const char *get_mime_type(const char *path);
 
-const char *MIME_DICT [][2]= {
-    {".html", "text/html"},
-    {".txt", "text/plain"}, 
-    {".png", "image/png"}, 
-    {".jpg", "image/jpeg"}, 
-    {".jpeg", "image/jpeg"}, 
-    {NULL, NULL}
-};
 
 /* STRUCTS */
 typedef struct Dir_Ele {
@@ -115,7 +107,7 @@ void send_error(const char *res_path, int fd){
     /* Content type */
     dprintf(fd, T_MIME_TYPE, mime_type);
     /* Content length */
-    cont_len = snprintf(NULL, 0, content, res_path) + 1;
+    cont_len = snprintf(NULL, 0, content, res_path);
     dprintf(fd, T_CONT_LEN, cont_len);
     /* Content */
     dprintf(fd, content, res_path);
@@ -192,41 +184,4 @@ void do_get(const char *res_path, int fd){
     free(abs_path);
 }
 
-
-/* finds the matching mime_type to a file given by its extension */
-const char *get_mime_type(const char *path) {
-
-    const char **tuple = MIME_DICT[0];
-    const char *ext = strrchr(path, '.');
-    const char *mime_type = NULL;
-    enum{EXT, MIME};
-
-    /* if no extension was found in path */
-    if(!ext) return NULL;
-
-    /* find matching mime tipe to found extension */
-    while(tuple[EXT]){
-        if(strcmp(ext, tuple[EXT]) == 0)
-            mime_type = tuple[MIME];
-        /* move to next mime-type (+= sizeof(MIME_DICT)) */
-        tuple++;
-    }
-    return mime_type;
-}
-
-
-/*
-int main(int argc, char **argv){
-
-    enum{RES_PATH=1, BASEDIR};
-    enum{FD_STD_OUT=1};
-
-    if(argc <= 1) { printf("nope not like this!"); return -1;}
-    if(argc == 3) {chdir(argv[BASEDIR]);}
-
-    do_get(argv[RES_PATH], FD_STD_OUT);
-
-    return 0;
-}
-*/
 

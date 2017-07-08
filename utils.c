@@ -5,27 +5,32 @@
 #include "utils.h"
 
 
+const char *MIME_DICT [][2]= {
+    {".html", "text/html"},
+    {".txt", "text/plain"}, 
+    {".c", "text/plain"}, 
+    {".png", "image/png"}, 
+    {".jpg", "image/jpeg"}, 
+    {".jpeg", "image/jpeg"}, 
+    {NULL, NULL}
+};
+
+void log_msg();
+
+
 /* Takes a string containing a request and a request-struct and fills
  * the struct with the information contained in the string */
 void split_request(const char *request_str, struct request *request) {
 
-    char *decoded_request = percent_decode(request_str);
-
     int ress_idx, prot_idx, i;
-    int str_len = strlen(decoded_request);
+    int str_len = strlen(request_str);
 
     /* calculate start index of next token */
-    ress_idx = next_token_idx(decoded_request, 0);
-    prot_idx = next_token_idx(decoded_request, ress_idx);
-
+    ress_idx = next_token_idx(request_str, 0);
+    prot_idx = next_token_idx(request_str, ress_idx);
     /* set values to request struct */
-    request->req_str  = strdup(decoded_request);
-    request->method   = request->req_str;
-    request->ressource = (request->req_str) + ress_idx;
-    request->protocol = (request->req_str) + prot_idx;
+    request->req_str = strdup(request_str);
 
-    free(decoded_request);
-    
     /* replace all spaces in the base-str with \0 to 
      * be able to read the substrings as strings since they
      * are terminated */
@@ -33,6 +38,11 @@ void split_request(const char *request_str, struct request *request) {
         if(request->req_str[i] == ' ')
             request->req_str[i] = '\0';
     }
+
+    request->method   = request->req_str;
+    request->ressource = percent_decode((request->req_str) + ress_idx);
+    request->protocol = (request->req_str) + prot_idx;
+
 }
 
 /* takes a string and an start index .Finds the next occurence
@@ -85,6 +95,28 @@ char* percent_decode(const char* str){
     }
 
     return decoded;
+}
+
+
+/* finds the matching mime_type to a file given by its extension */
+const char *get_mime_type(const char *path) {
+
+    const char **tuple = MIME_DICT[0];
+    const char *ext = strrchr(path, '.');
+    const char *mime_type = NULL;
+    enum{EXT, MIME};
+
+    /* if no extension was found in path */
+    if(!ext) return NULL;
+
+    /* find matching mime tipe to found extension */
+    while(tuple[EXT]){
+        if(strcmp(ext, tuple[EXT]) == 0)
+            mime_type = tuple[MIME];
+        /* move to next mime-type (+= sizeof(MIME_DICT)) */
+        tuple++;
+    }
+    return mime_type;
 }
 
 /*

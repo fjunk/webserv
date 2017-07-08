@@ -2,13 +2,13 @@ CC=gcc
 CFLAGS= -g -pedantic -Wall 
 
 
-all: server
+all: webserver
 
-run: server
-	./server start
+run: webserver
+	./webserver start
 
-server: server.o process.o get.o utils.o
-	$(CC) $(CFLAGS) -o server server.o get.o process.o utils.o
+webserver: server.o process.o get.o utils.o
+	$(CC) $(CFLAGS) -o webserver server.o get.o process.o utils.o
 
 server.o: server.c
 	$(CC) $(CFLAGS) -c server.c
@@ -25,4 +25,4 @@ utils.o: utils.c utils.h
 
 
 clean: 
-	-/bin/rm -f get.o process.o server.o utils.o server server.pid
+	-/bin/rm -f get.o process.o server.o utils.o webserver server.pid

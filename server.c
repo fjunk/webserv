@@ -24,6 +24,7 @@ void serve(int port);
 
 /* GLOBALS */
 int child_pids[MAX_CHILDS];
+char cwd [1024];
 
 
 /* log string of request */
@@ -42,14 +43,15 @@ void int_handler(int sig) {
     for(i=0; i<MAX_CHILDS; i++) {
         if(child_pids[i]){
             printf("killing child %d\n", child_pids[i]);
-            if (kill(child_pids[i], sig)) {
+            if (kill(child_pids[i], SIGINT)) {
                 perror("Kill failed\n");
             }
         }
     }
     /* remove PID-file */
     printf("removing %s!\n", FNAME_PID);
-    remove(FNAME_PID);
+    /* change back to base-dir and remove the PID-file */
+    chdir(cwd); remove(FNAME_PID);
     _exit(-1);
 }
 
@@ -82,43 +84,61 @@ void write_pid() {
 }
 
 
-/* reads the PID from the pid-file in the current dir and returns it */
+/* reads the PID from the pid-file in the current dir and returns it 
+ * if an error occurred while opening / reading the file, -1 is returned.
+ */
 int read_pid() {
-    int fd = open(FNAME_PID, O_RDONLY);
+    int fd = 0;
+    int len = 0;
     char s_pid [10];
-    int len = read(fd, s_pid, 10);
+
+    fd = open(FNAME_PID, O_RDONLY);
+    if (fd == -1) { return -1; }
+
+    len = read(fd, s_pid, 10);
+    if (len <= 0) { perror("error reading FNAME_PID!"); exit(-1); }
 
     s_pid[len] = '\n';
+
     return atoi(s_pid);
 }
 
 
-/* Returns 1 if a process with pid exists, else 0 */
-int process_exists(int pid) {
-    return kill(pid, 0) == 0 ? 1 : 0;
-}
-
-void start() {
-    /* save server pid to filesystem */
+void start(const char* base_dir, const int port) {
     write_pid();
-    serve(8000);
+    /* in case we want to change the diretory, 
+     * save where the pid-file got written to */
+    if (base_dir != NULL) {
+        if (getcwd(cwd, sizeof(cwd)) == NULL) {
+            perror("getcwd() error");
+        }
+        if (chdir(base_dir) == -1 ) 
+            { perror("Could not change directory"); exit(-1); }
+    }
+    /* save server pid to filesystem */
+    serve(port);
 }
 
-void status() {
+
+void print_status() {
     int pid = read_pid();
-    if(process_exists(pid)){
-        printf("Server running with pid: %d", pid);
+    /* order of the checks is important since kill(-1, x) is NO GUCCI */
+    if (pid != -1 && kill(pid, 0) == 0) {
+        printf("Server is running with pid %d!\n", pid);
     } else {
-        printf("Server not running!");
+        printf("Server is NOT running!\n");
     }
 }
 
 void stop() {
     int pid = read_pid();
-    if(process_exists(pid))
-        kill(pid, SIGINT);
-    else
-        printf("pid %d does not exist", pid);
+    /* could not find file with pid -> server not running */
+    if ( pid == -1 || kill(pid, 0) != 0) {
+        printf("Server not running / pid %d does not exist", pid);
+        exit(0);
+    }
+    /* server is running: stop it */
+    kill(pid, SIGINT);
 }
 
 
@@ -130,10 +150,6 @@ void serve(int port) {
     struct sockaddr_in server_addr, client_addr;
     struct request *request;
     char *request_str;
-
-    /* install SIGCHLD handler to respond to finishing childs */
-    signal(SIGCHLD, child_handler);
-    signal(SIGINT, int_handler);
 
     /* set type, port and listen on all interfaces */
     server_addr.sin_family = AF_INET;
@@ -157,6 +173,10 @@ void serve(int port) {
         exit(-1);
     }
 
+    /* install SIGCHLD handler to respond to finishing childs */
+    signal(SIGCHLD, child_handler);
+    signal(SIGINT, int_handler);
+
     while(1) {
         client_len = sizeof(struct sockaddr);
         client_sockfd = accept(server_sockfd,
@@ -176,7 +196,13 @@ void serve(int port) {
         }
 
         if (child_pid == 0) {
+
+            /* close parent-socket */
             close(server_sockfd);
+
+            /* reset signal handlers to Default for childs */
+            signal(SIGINT, SIG_DFL);
+            signal(SIGCHLD, SIG_DFL);
 
             printf("processing request...\n");
 
@@ -192,6 +218,7 @@ void serve(int port) {
             do_get(request->ressource, client_sockfd);
 
             /* valgrind doesn't care about these 2... why? */
+            free(request->ressource);
             free(request->req_str);
             free(request);
             
@@ -206,26 +233,37 @@ void serve(int port) {
 /*  ############## MAIN ############### */
 int main(int argc, char **argv){
 
-    enum{ CMD=1 };
-
-    /* need at least one argument */
-    if ( argc < 2 ) return -1;
+    const int CMD = 1;
+    const int DEFAULT_PORT = 8080;
+    int port;
 
     /************  START  *************/
-    if(strcmp(argv[CMD], "start") == 0) {
-        start();
+    if (argc == 1) { 
+        /* no arguments: start server with default-config 
+         * which means cwd as root-dir and port 8080 */
+        start(NULL, DEFAULT_PORT); 
     
-    /************  STATUS  ************/
-    } else if (strcmp(argv[CMD], "status") == 0) {
-        status();
+    } else if (argc == 2) {
 
-    /************  STOP  ************/
-    } else if (strcmp(argv[CMD], "stop") == 0) {
-        stop();
+        /* optional commands to see if server is running / to stop it */
+        if (strcmp(argv[CMD], "status") == 0) { print_status(); }
+        else if (strcmp(argv[CMD], "stop") == 0) { stop(); }
+        else {
+            start(argv[1], DEFAULT_PORT);
+        }
 
+    }  else if (argc == 3) {
+        /* 2 additional args, change basedir and port */
+        /* check that the port is a valid port number */
+        port = atoi(argv[2]);
+        if (port < 1 || port > 65535) {
+            printf("Invalid Port number!\n"); exit(-1);
+        }
+        start(argv[1], port);
+
+    
     } else {
         printf("Invalid Arguments!\n");
-        printf("Try: ./server start | status | stop\n");
         return -1;
     }
 
