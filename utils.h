@@ -8,5 +8,5 @@ struct request {
 
 char* percent_decode(const char* str);
 int next_token_idx(const char *str, int start_idx);
-void split_request(const char*request_str, struct request *request);
+void split_request(const char *request_str, struct request *request);
 

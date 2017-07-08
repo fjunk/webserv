@@ -11,6 +11,7 @@
 
 #include "utils.h"
 #include "process.h"
+#include "get.h"
 
 
 #define MAX_CHILDS 17
@@ -169,7 +170,6 @@ void serve(int port) {
             for(i=0; i<MAX_CHILDS; i++) {
                 if( ! child_pids[i]) {
                     child_pids[i] = child_pid;
-                    printf("could save child_pid!\n");
                     break;
                 }
             }
@@ -178,17 +178,23 @@ void serve(int port) {
         if (child_pid == 0) {
             close(server_sockfd);
 
+            printf("processing request...\n");
 
-            request_str = read_request(client_sockfd);
-            /* TODO STUFF */
-            /*
+            /* alloc space for request-struct */
             request = malloc(sizeof(struct request));
+
+            /* read from socket and split GET-line into struct */
+            request_str = read_request(client_sockfd);
             split_request(request_str, request);
-            */
+            printf("Request; %s\n", request->ressource);
 
-            /* decode / split / do_get */
-            printf("%s\n", request_str);
+            /* get ressource */
+            do_get(request->ressource, client_sockfd);
 
+            /* valgrind doesn't care about these 2... why? */
+            free(request->req_str);
+            free(request);
+            
             exit(1);
         }
 
