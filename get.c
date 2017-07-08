@@ -1,4 +1,5 @@
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -158,25 +159,46 @@ void send_file(const char *res_path, int fd){
     close(read_fd);
 }
 
+/* executes given file and pipes stdin and stdout to client_fd */
+void exec_file(const char *res_path, int fd) {
+    /* prepare args for execv */
+    const char *argv[64] = {res_path, NULL};
+
+    /* bind stdin (0) and stdout (1) to client_fd  */
+    dup2(fd, 0);
+    dup2(fd, 1);
+
+    if (-1 == execv(argv[0], (char **)argv)) {
+        perror("Error while trying to execute file");
+    }
+}
+
 void do_get(const char *res_path, int fd){
     char *abs_path;
     char cwd[1024];
+    struct stat fs;
     DIR* dir;
 
     getcwd(cwd, sizeof(cwd));
     abs_path = malloc(strlen(cwd) + strlen(res_path) + 2);
+    /* could delete the '/' to avoid double slashes but since they
+     * are no problem i'll leave it there. */
     sprintf(abs_path, "%s/%s", cwd, res_path);
 
     if(access(abs_path, F_OK) == -1) {
         /* file does NOT exists */
         send_error(abs_path, fd);
     } else {
-        if((dir = opendir(abs_path))){
+        if ((dir = opendir(abs_path))){
             /* res_path describes a dir */
             send_dir_content(dir, fd);
             closedir(dir);
+        } else if (stat(abs_path, &fs) == 0 && fs.st_mode & S_IXUSR){
+            printf("File %s is executable!\n", abs_path);
+            exec_file(abs_path, fd);
+
         } else {
-            /* res_path describes a file */
+            /* res_path describes a normal file */
             send_file(abs_path, fd);
         }
     }
