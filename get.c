@@ -17,6 +17,7 @@ void do_get(const char *res_path, int fd);
 /* STRUCTS */
 typedef struct Dir_Ele {
     char str [200];
+    char as_link [300];
     int len;
     struct Dir_Ele *next;
 } DIR_ELE;
@@ -28,8 +29,9 @@ const char *T_STATUS_200 = "HTTP/1.0 200 OK\n";
 const char *T_MIME_TYPE  = "Content-Type: %s\n";
 const char *T_CONT_LEN   = "Content-Length: %d\n\n";
 
-/* LIST TEMPLATES */
+/* HTML TEMPLATES */
 const char *T_LIST_ITEM = "<li>%s</li>";
+const char *T_HTML_LINK = "<a href=\"%s\">%s</a>";
 
 
 /**
@@ -59,20 +61,26 @@ void send_dir_content(DIR *dir, int fd) {
     ele = head;
     entry = readdir(dir);
 
-    if(entry){
+    /* hide dotfiles */
+    if(entry) {
 
-        n_dir_entries += 1;
-        sprintf(ele->str, T_LIST_ITEM, entry->d_name);
-        content_length += strlen(ele->str);
-        ele->next = NULL;
+        if (entry->d_name[0] != '.') {
+            n_dir_entries += 1;
+            strcpy(ele->str, entry->d_name);
+            sprintf(ele->as_link, T_HTML_LINK, entry->d_name, entry->d_name);
+            content_length += snprintf(NULL, 0, T_LIST_ITEM, ele->as_link);
+            ele->next = NULL;
+        }
 
         while((entry = readdir(dir))){
-            ele->next = malloc(sizeof(DIR_ELE));
-            ele = ele->next;
-            sprintf(ele->str, T_LIST_ITEM, entry->d_name);
-            content_length += strlen(ele->str);
-            ele->next = NULL;
-            n_dir_entries += 1;
+            if (entry->d_name[0] != '.') {
+                ele->next = malloc(sizeof(DIR_ELE));
+                ele = ele->next;
+                sprintf(ele->as_link, T_HTML_LINK, entry->d_name, entry->d_name);
+                content_length += snprintf(NULL, 0, T_LIST_ITEM, ele->as_link);
+                ele->next = NULL;
+                n_dir_entries += 1;
+            }
         }
 
     }
@@ -84,13 +92,13 @@ void send_dir_content(DIR *dir, int fd) {
     /* write content (unordered list) & free nodes */
     write(fd, ul_start, strlen(ul_start));
     while(head->next){
-        write(fd, head->str, strlen(head->str));
+        dprintf(fd, T_LIST_ITEM, head->as_link);
         ele = head;
         head = head->next;
         free(ele);
     }
 
-    write(fd, head->str, strlen(head->str));
+    dprintf(fd, T_LIST_ITEM, head->as_link);
     free(head);
 
     write(fd, ul_end, strlen(ul_end));

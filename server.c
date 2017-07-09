@@ -27,13 +27,6 @@ int child_pids[MAX_CHILDS];
 char cwd [1024];
 
 
-/* log string of request */
-void log_request(char *str) {
-    /* char* log_file = LOGFILE;
-    int fd = open(log_file, O_WRONLY | O_CREAT | O_APPEND, 0644);
-    write(fd, str, strlen(str)); */
-    printf("%s\n", str);
-}
 
 /* removes the pid-file from current dir and kills all child processes */
 void int_handler(int sig) {

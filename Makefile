@@ -25,4 +25,4 @@ utils.o: utils.c utils.h
 
 
 clean: 
-	-/bin/rm -f get.o process.o server.o utils.o webserver server.pid
+	-/bin/rm -f get.o process.o server.o utils.o webserver server.pid server.log

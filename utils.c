@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
+#include <time.h>
 
 #include "utils.h"
 
@@ -15,7 +17,16 @@ const char *MIME_DICT [][2]= {
     {NULL, NULL}
 };
 
-void log_msg();
+void log_request(struct request* request) {
+    int fd = open("server.log", O_WRONLY | O_CREAT | O_APPEND, 0644);
+
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+
+    printf("now: %d-%d-%d %d:%d:%d\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+    /*write(fd, str, strlen(str)); */
+}
 
 
 /* Takes a string containing a request and a request-struct and fills
