@@ -33,6 +33,7 @@ const char *T_CONT_LEN   = "Content-Length: %d\n\n";
 const char *T_LIST_ITEM = "<li>%s</li>";
 const char *T_HTML_LINK = "<a href=\"%s\">%s</a>";
 
+enum { ERR=-1, DIR_=0, EXEC=1, NORM=2 };
 
 /**
  * Writes a representation of 'dir' to given FileDescriptor fd as
@@ -41,7 +42,7 @@ const char *T_HTML_LINK = "<a href=\"%s\">%s</a>";
  * The Content consists of a html with an unordered list (ul) with
  * list entries for each file or folder in the directory.
  **/
-void send_dir_content(DIR *dir, int fd) {
+void send_dir_content(const char *abs_res_path, const char *res_path, int fd) {
 
     char *mime_type = "text/html";
     struct dirent *entry;
@@ -50,6 +51,9 @@ void send_dir_content(DIR *dir, int fd) {
     int content_length = 0;
     char *ul_start = "<html><ul>";
     char *ul_end = "</ul></html>";
+    DIR *dir = opendir(abs_res_path);
+    char path_buff [200];
+    int show_dotfiles = 1;
 
     /* Status line */
     write(fd, T_STATUS_200, strlen(T_STATUS_200));
@@ -61,28 +65,40 @@ void send_dir_content(DIR *dir, int fd) {
     ele = head;
     entry = readdir(dir);
 
-    /* hide dotfiles */
     if(entry) {
 
-        if (entry->d_name[0] != '.') {
+        /* hide dotfiles */
+        if (show_dotfiles || entry->d_name[0] != '.') {
             n_dir_entries += 1;
+            if (strcmp(res_path, "/") != 0) {
+                sprintf(path_buff, "%s/%s", res_path, entry->d_name);
+                sprintf(ele->as_link, T_HTML_LINK, path_buff, entry->d_name);
+            } else {
+                sprintf(ele->as_link, T_HTML_LINK, entry->d_name, entry->d_name);
+            }
+            /* copy name of dir-entry */
             strcpy(ele->str, entry->d_name);
-            sprintf(ele->as_link, T_HTML_LINK, entry->d_name, entry->d_name);
             content_length += snprintf(NULL, 0, T_LIST_ITEM, ele->as_link);
             ele->next = NULL;
         }
 
+        /* append to custom list of dir entries */
         while((entry = readdir(dir))){
-            if (entry->d_name[0] != '.') {
+            /* hide dotfiles */
+            if (show_dotfiles || entry->d_name[0] != '.') {
                 ele->next = malloc(sizeof(DIR_ELE));
                 ele = ele->next;
-                sprintf(ele->as_link, T_HTML_LINK, entry->d_name, entry->d_name);
+                if (strcmp(res_path, "/") != 0) {
+                    sprintf(path_buff, "%s/%s", res_path, entry->d_name);
+                    sprintf(ele->as_link, T_HTML_LINK, path_buff, entry->d_name);
+                } else {
+                    sprintf(ele->as_link, T_HTML_LINK, entry->d_name, entry->d_name);
+                }
                 content_length += snprintf(NULL, 0, T_LIST_ITEM, ele->as_link);
                 ele->next = NULL;
                 n_dir_entries += 1;
             }
         }
-
     }
 
     /* content length */
@@ -181,34 +197,47 @@ void exec_file(const char *res_path, int fd) {
     }
 }
 
+int filetype(const char *abs_path) {
+    struct stat fs;
+    DIR* dir;
+    int file_type = -1;
+
+    if (access(abs_path, F_OK) == -1 ) {
+        file_type = ERR;
+    } /* file does not exist */
+    else if ((dir = opendir(abs_path)) != NULL) {
+        closedir(dir);
+        file_type = DIR_;
+    } /* file is direcotry */
+    else if (stat(abs_path, &fs) == 0 && fs.st_mode & S_IXUSR) {
+        file_type = EXEC;
+    } /* file is exectuable */
+    else {
+        file_type = NORM;
+    } /* file is normal file */
+    return file_type;
+}
+
+
 void do_get(const char *res_path, int fd){
     char *abs_path;
     char cwd[1024];
-    struct stat fs;
-    DIR* dir;
+    int path_len;
+
 
     getcwd(cwd, sizeof(cwd));
-    abs_path = malloc(strlen(cwd) + strlen(res_path) + 2);
     /* could delete the '/' to avoid double slashes but since they
      * are no problem i'll leave it there. */
+    path_len = snprintf(NULL, 0, "%s/%s", cwd, res_path);
+    abs_path = malloc(path_len);
     sprintf(abs_path, "%s/%s", cwd, res_path);
 
-    if(access(abs_path, F_OK) == -1) {
-        /* file does NOT exists */
-        send_error(abs_path, fd);
-    } else {
-        if ((dir = opendir(abs_path))){
-            /* res_path describes a dir */
-            send_dir_content(dir, fd);
-            closedir(dir);
-        } else if (stat(abs_path, &fs) == 0 && fs.st_mode & S_IXUSR){
-            printf("File %s is executable!\n", abs_path);
-            exec_file(abs_path, fd);
-
-        } else {
-            /* res_path describes a normal file */
-            send_file(abs_path, fd);
-        }
+    switch(filetype(abs_path)) {
+        case DIR_:  send_dir_content(abs_path, res_path, fd); break; /* FIXME */
+        case EXEC:  exec_file(abs_path, fd); break;
+        case NORM:  send_file(abs_path, fd); break;
+        case ERR:   send_error(abs_path, fd); break;
+        default: printf("Error detecting filetype\n");
     }
 
     free(abs_path);
