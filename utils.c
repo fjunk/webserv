@@ -18,7 +18,7 @@ const char *MIME_DICT [][2]= {
 };
 
 void log_request(struct request* request) {
-    int fd = open("server.log", O_WRONLY | O_CREAT | O_APPEND, 0644);
+    /* int fd = open("server.log", O_WRONLY | O_CREAT | O_APPEND, 0644); */
 
     time_t t = time(NULL);
     struct tm tm = *localtime(&t);

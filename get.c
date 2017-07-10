@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <ctype.h>
 #include <stdarg.h>
 
 #include "utils.h"
@@ -53,7 +54,6 @@ void send_dir_content(const char *abs_res_path, const char *res_path, int fd) {
     char *ul_end = "</ul></html>";
     DIR *dir = opendir(abs_res_path);
     char path_buff [200];
-    int show_dotfiles = 1;
 
     /* Status line */
     write(fd, T_STATUS_200, strlen(T_STATUS_200));
@@ -68,7 +68,7 @@ void send_dir_content(const char *abs_res_path, const char *res_path, int fd) {
     if(entry) {
 
         /* hide dotfiles */
-        if (show_dotfiles || entry->d_name[0] != '.') {
+        if (strcmp(entry->d_name, ".") != 0) {
             n_dir_entries += 1;
             if (strcmp(res_path, "/") != 0) {
                 sprintf(path_buff, "%s/%s", res_path, entry->d_name);
@@ -85,7 +85,7 @@ void send_dir_content(const char *abs_res_path, const char *res_path, int fd) {
         /* append to custom list of dir entries */
         while((entry = readdir(dir))){
             /* hide dotfiles */
-            if (show_dotfiles || entry->d_name[0] != '.') {
+            if (strcmp(entry->d_name, ".") != 0) {
                 ele->next = malloc(sizeof(DIR_ELE));
                 ele = ele->next;
                 if (strcmp(res_path, "/") != 0) {
@@ -100,6 +100,7 @@ void send_dir_content(const char *abs_res_path, const char *res_path, int fd) {
             }
         }
     }
+    closedir(dir);
 
     /* content length */
     content_length += strlen(ul_start) + strlen(ul_end);
@@ -158,7 +159,11 @@ void send_file(const char *res_path, int fd){
     /* Content type */
     dprintf(fd, T_MIME_TYPE, mime_type);
     /* Content length */
+    printf("%s\n", res_path);
     read_fd = open(res_path, O_RDONLY);
+    if (read_fd < 0) {
+        perror("Open-Error"); exit(-1);
+    }
     fstat(read_fd, &s);
     cont_len = s.st_size;
     dprintf(fd, T_CONT_LEN, cont_len);
@@ -221,14 +226,14 @@ int filetype(const char *abs_path) {
 
 void do_get(const char *res_path, int fd){
     char *abs_path;
-    char cwd[1024];
+    char *cwd;
     int path_len;
 
 
-    getcwd(cwd, sizeof(cwd));
+    cwd = getcwd(NULL, 0);
     /* could delete the '/' to avoid double slashes but since they
      * are no problem i'll leave it there. */
-    path_len = snprintf(NULL, 0, "%s/%s", cwd, res_path);
+    path_len = snprintf(NULL, 0, "%s/%s", cwd, res_path) + 1;
     abs_path = malloc(path_len);
     sprintf(abs_path, "%s/%s", cwd, res_path);
 
@@ -241,6 +246,6 @@ void do_get(const char *res_path, int fd){
     }
 
     free(abs_path);
+    free(cwd);
 }
-
 

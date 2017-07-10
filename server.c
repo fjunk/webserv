@@ -143,7 +143,7 @@ void serve(int port) {
     struct sockaddr_in server_addr, client_addr;
     struct request *request;
     char *request_str;
-
+    int enable = 1;
     /* set type, port and listen on all interfaces */
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);
@@ -154,6 +154,8 @@ void serve(int port) {
         perror("socket error"); exit(-1);
     }
 
+    if (setsockopt(server_sockfd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0)
+            perror("setsockopt(SO_REUSEADDR) failed");
     /* BIND SOCKET */
     if (bind(server_sockfd, (struct sockaddr*) &server_addr, 
                 sizeof(struct sockaddr_in)) < 0) {
@@ -214,6 +216,8 @@ void serve(int port) {
             free(request->ressource);
             free(request->req_str);
             free(request);
+
+            free(request_str);
             
             exit(1);
         }
