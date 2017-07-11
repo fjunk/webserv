@@ -7,9 +7,22 @@
 
 #include "utils.h"
 
+/** 
+ *  GET /index... HTTP1... \r\n 
+ *  ... 
+ *  ... 
+ *  \r\n\r\n
+ */
+
+/*
+ * move last 3 chars to beginning of new read 
+ * buffersize = 1003
+ * terminate buffer with \0  */
 
 const char *LINE_BREAK = "\r\n";
 const char *DOUBLE_LINE_BREAK ="\r\n\r\n";
+
+
 
 
 char *read_request(int read_fd){
@@ -17,35 +30,37 @@ char *read_request(int read_fd){
     enum { BUFFSIZE=1000 };
     char buffer[BUFFSIZE] = {1};
 
-    char *db_break_ptr;
+    char *new_str = "";
     char *break_ptr;
-    char *new_str;
-
+    char *db_break_ptr;
     int byte_read; 
 
-    while(1) {
-        byte_read = read(read_fd, buffer+3, BUFFSIZE-4);
-        buffer[byte_read-1] = '\0';
-        printf("%s\n", buffer);
+    buffer[BUFFSIZE-1] = '\0';
+    /* read once to get the GET string */
+    byte_read = read(read_fd, buffer, BUFFSIZE-1);
 
-        if (byte_read > 0) {
+    if (byte_read > 0) {
             break_ptr = strstr(buffer, LINE_BREAK);
+            db_break_ptr = strstr(buffer, DOUBLE_LINE_BREAK);
 
-            if (break_ptr != NULL) {
-                new_str = strdup(break_ptr);
-            }
-            
-            if (strstr(buffer, DOUBLE_LINE_BREAK)) {
-                return new_str;
+            if(break_ptr) {
+                *break_ptr = '\0';
+                new_str = strdup(buffer);
             }
 
-        } else if (byte_read < 0) {
-            perror ("readerror");
-        }
+            /* if the whole request has been read, return get-string */
+            if(db_break_ptr) return new_str;
+
+    } else if (byte_read < 0) {
+        perror("readerror");
     }
+
+    return new_str;
+
+    /* TODO: read from buffer till doublelinebreak is present */
 }
 
-
+/*
 int main() {
 
     int read_fd = open("input.txt", O_RDONLY);
@@ -66,3 +81,4 @@ int main() {
 
     return 0;
 }
+*/
