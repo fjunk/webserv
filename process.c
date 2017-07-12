@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <limits.h>
 
 #include "utils.h"
 
@@ -14,33 +15,50 @@ const char *DOUBLE_LINE_BREAK ="\r\n\r\n";
 
 char *read_request(int read_fd){
 
-    enum { BUFFSIZE=1000 };
-    char buffer[BUFFSIZE] = {1};
-
     char *db_break_ptr;
     char *break_ptr;
     char *new_str;
 
-    int byte_read; 
+    int byte_read,i ;
+    int offset;
 
-    while(1) {
-        byte_read = read(read_fd, buffer+3, BUFFSIZE-4);
-        buffer[byte_read-1] = '\0';
+    const int BUFFSIZE = 205;
+    char buffer[BUFFSIZE];
+
+    /* init buffer */
+    for (i=0; i<BUFFSIZE; i++) {
+        buffer[i] = '_';
+    }
+
+    /* INT_MAX to avoid int overflow at some point... */
+    for (i=0; i<INT_MAX; i++) {
+
+        byte_read = read(read_fd, buffer+offset, BUFFSIZE-offset-1);
+        printf("Byte read: %d\n", byte_read);
+        buffer[byte_read+offset] = '\0';
         printf("%s\n", buffer);
 
         if (byte_read > 0) {
-            break_ptr = strstr(buffer, LINE_BREAK);
-
-            if (break_ptr != NULL) {
-                new_str = strdup(break_ptr);
+            if (0 == i){
+                break_ptr = strstr(buffer, LINE_BREAK);
+                *break_ptr = '\0';
+                new_str = strdup(buffer+offset);
+                *break_ptr = 'x';
             }
-            
-            if (strstr(buffer, DOUBLE_LINE_BREAK)) {
+
+            if (strstr(buffer, DOUBLE_LINE_BREAK) != NULL) {
                 return new_str;
+            } else {
+                /* copy last 3 chars (last char is \0) */
+                buffer[0] = buffer[byte_read+0];
+                buffer[1] = buffer[byte_read+1];
+                buffer[2] = buffer[byte_read+2];
             }
-
         } else if (byte_read < 0) {
             perror ("readerror");
+        } else {
+            printf("Invalid HTML Request! Terminate with \\r\\n\\r\\n!\n");
+            exit(-1);
         }
     }
 }
@@ -60,9 +78,11 @@ int main() {
     printf("%s\n", req->method);
     printf("%s\n", req->ressource);
     printf("%s\n", req->protocol);
+    /*
     free(str);
     free(req->req_str);
     free(req);
+    */
 
     return 0;
 }
