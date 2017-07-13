@@ -122,7 +122,7 @@ void send_dir(const char *abs_res_path, const char *res_path, int fd) {
 
 void send_error(const char *res_path, int fd){
 
-    char *content = "<html>%s does not exist!</html>\n";
+    char *content = "<html>%s does not exist / is not supported!</html>\n";
     char *mime_type = "text/html";
     int cont_len;
 
@@ -150,7 +150,9 @@ void send_file(const char *res_path, int fd){
     int bytes_read, bytes_written;
     int read_fd;
 
-    if( !(mime_type = get_mime_type(res_path)) ) return;
+    if((mime_type = get_mime_type(res_path)) == NULL ) {
+        send_error(res_path, fd);
+    }
 
     /* Status line */
     write(fd, T_STATUS_200, strlen(T_STATUS_200));

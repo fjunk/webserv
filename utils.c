@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <stdio.h> 
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
@@ -17,6 +17,7 @@ const char *MIME_DICT [][2]= {
     {NULL, NULL}
 };
 
+/* TODO TODO TODO */
 void log_request(struct request* request) {
     /* int fd = open("server.log", O_WRONLY | O_CREAT | O_APPEND, 0644); */
 
@@ -129,11 +130,10 @@ const char *get_mime_type(const char *path) {
     }
     return mime_type;
 }
-
 /*
 void main() {
 
-    const char *test_request = "GET%20/index.html%20HTTP/1.0";
+    const char *test_request = "GET /ind%20ex.html HTTP/1.0";
     struct request* req = malloc(sizeof(struct request));
 
     split_request(test_request, req);
@@ -147,6 +147,6 @@ void main() {
 
     free(req->req_str);
     free(req);
-
 }
 */
+
