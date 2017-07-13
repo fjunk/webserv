@@ -206,6 +206,8 @@ void serve(int port) {
 
             /* read from socket and split GET-line into struct */
             request_str = read_request(client_sockfd);
+            if (NULL == request_str) 
+                exit(-1);
             split_request(request_str, request);
             printf("Request; %s\n", request->ressource);
 
@@ -219,7 +221,7 @@ void serve(int port) {
 
             free(request_str);
             
-            exit(1);
+            exit(0);
         }
 
         close(client_sockfd);
@@ -242,9 +244,15 @@ int main(int argc, char **argv){
     
     } else if (argc == 2) {
 
-        /* optional commands to see if server is running / to stop it */
-        if (strcmp(argv[CMD], "status") == 0) { print_status(); }
-        else if (strcmp(argv[CMD], "stop") == 0) { stop(); }
+        /* display if server is running */
+        if (strcmp(argv[CMD], "status") == 0) { 
+            print_status(); 
+        } 
+        /* stop running server */
+        else if (strcmp(argv[CMD], "stop") == 0) { 
+            stop(); 
+        }
+        /* start new server with default config */
         else {
             start(argv[1], DEFAULT_PORT);
         }

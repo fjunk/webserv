@@ -25,14 +25,15 @@ typedef struct Dir_Ele {
 
 
 /* HEADER TEMPLATES (T-prefix) */
-const char *T_STATUS_400 = "HTTP/1.0 404 Not Found\n";
-const char *T_STATUS_200 = "HTTP/1.0 200 OK\n";
-const char *T_MIME_TYPE  = "Content-Type: %s\n";
-const char *T_CONT_LEN   = "Content-Length: %d\n\n";
+const char *T_STATUS_400 = "HTTP/1.0 404 Not Found\r\n";
+const char *T_STATUS_200 = "HTTP/1.0 200 OK\r\n";
+const char *T_MIME_TYPE  = "Content-Type: %s\r\n";
+const char *T_CONT_LEN   = "Content-Length: %d\r\n\r\n";
 
 /* HTML TEMPLATES */
 const char *T_LIST_ITEM = "<li>%s</li>";
 const char *T_HTML_LINK = "<a href=\"%s\">%s</a>";
+const char *T_HTML_DIR_LINK = "<a href=\"%s/\">%s</a>";
 
 enum { ERR=-1, DIR_=0, EXEC=1, NORM=2 };
 
@@ -43,17 +44,16 @@ enum { ERR=-1, DIR_=0, EXEC=1, NORM=2 };
  * The Content consists of a html with an unordered list (ul) with
  * list entries for each file or folder in the directory.
  **/
-void send_dir_content(const char *abs_res_path, const char *res_path, int fd) {
+void send_dir(const char *abs_res_path, const char *res_path, int fd) {
 
     char *mime_type = "text/html";
     struct dirent *entry;
     DIR_ELE *ele, *head; /* TODO rename */
     int n_dir_entries = 0;
     int content_length = 0;
-    char *ul_start = "<html><ul>";
-    char *ul_end = "</ul></html>";
+    char *ul_start = "<html><head></head><body><ul>";
+    char *ul_end = "</ul></body></html>";
     DIR *dir = opendir(abs_res_path);
-    char path_buff [200];
 
     /* Status line */
     write(fd, T_STATUS_200, strlen(T_STATUS_200));
@@ -70,9 +70,8 @@ void send_dir_content(const char *abs_res_path, const char *res_path, int fd) {
         /* hide dotfiles */
         if (strcmp(entry->d_name, ".") != 0) {
             n_dir_entries += 1;
-            if (strcmp(res_path, "/") != 0) {
-                sprintf(path_buff, "%s/%s", res_path, entry->d_name);
-                sprintf(ele->as_link, T_HTML_LINK, path_buff, entry->d_name);
+            if(entry->d_type == DT_DIR){
+                sprintf(ele->as_link, T_HTML_DIR_LINK, entry->d_name, entry->d_name);
             } else {
                 sprintf(ele->as_link, T_HTML_LINK, entry->d_name, entry->d_name);
             }
@@ -88,9 +87,8 @@ void send_dir_content(const char *abs_res_path, const char *res_path, int fd) {
             if (strcmp(entry->d_name, ".") != 0) {
                 ele->next = malloc(sizeof(DIR_ELE));
                 ele = ele->next;
-                if (strcmp(res_path, "/") != 0) {
-                    sprintf(path_buff, "%s/%s", res_path, entry->d_name);
-                    sprintf(ele->as_link, T_HTML_LINK, path_buff, entry->d_name);
+                if(entry->d_type == DT_DIR){
+                    sprintf(ele->as_link, T_HTML_DIR_LINK, entry->d_name, entry->d_name);
                 } else {
                     sprintf(ele->as_link, T_HTML_LINK, entry->d_name, entry->d_name);
                 }
@@ -194,9 +192,10 @@ void exec_file(const char *res_path, int fd) {
     const char *argv[64] = {res_path, NULL};
 
     /* bind stdin (0) and stdout (1) to client_fd  */
-    dup2(fd, 0);
-    dup2(fd, 1);
+    if (dup2(fd, 0) == -1 || dup2(fd, 1) == -1 ) 
+        perror("Error while redirecting input / output");
 
+    /* execute file */
     if (-1 == execv(argv[0], (char **)argv)) {
         perror("Error while trying to execute file");
     }
@@ -229,16 +228,15 @@ void do_get(const char *res_path, int fd){
     char *cwd;
     int path_len;
 
-
     cwd = getcwd(NULL, 0);
     /* could delete the '/' to avoid double slashes but since they
      * are no problem i'll leave it there. */
     path_len = snprintf(NULL, 0, "%s/%s", cwd, res_path) + 1;
     abs_path = malloc(path_len);
-    sprintf(abs_path, "%s/%s", cwd, res_path);
+    sprintf(abs_path, "%s%s", cwd, res_path);
 
     switch(filetype(abs_path)) {
-        case DIR_:  send_dir_content(abs_path, res_path, fd); break; /* FIXME */
+        case DIR_:  send_dir(abs_path, res_path, fd); break;
         case EXEC:  exec_file(abs_path, fd); break;
         case NORM:  send_file(abs_path, fd); break;
         case ERR:   send_error(abs_path, fd); break;

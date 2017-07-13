@@ -15,12 +15,11 @@ const char *DOUBLE_LINE_BREAK ="\r\n\r\n";
 
 char *read_request(int read_fd){
 
-    char *db_break_ptr;
     char *break_ptr;
     char *new_str;
 
     int byte_read,i ;
-    int offset;
+    int offset = 3;
 
     const int BUFFSIZE = 205;
     char buffer[BUFFSIZE];
@@ -34,9 +33,7 @@ char *read_request(int read_fd){
     for (i=0; i<INT_MAX; i++) {
 
         byte_read = read(read_fd, buffer+offset, BUFFSIZE-offset-1);
-        printf("Byte read: %d\n", byte_read);
         buffer[byte_read+offset] = '\0';
-        printf("%s\n", buffer);
 
         if (byte_read > 0) {
             if (0 == i){
@@ -58,12 +55,13 @@ char *read_request(int read_fd){
             perror ("readerror");
         } else {
             printf("Invalid HTML Request! Terminate with \\r\\n\\r\\n!\n");
-            exit(-1);
+            break;
         }
     }
+    return NULL;
 }
 
-
+/*
 int main() {
 
     int read_fd = open("input.txt", O_RDONLY);
@@ -78,11 +76,11 @@ int main() {
     printf("%s\n", req->method);
     printf("%s\n", req->ressource);
     printf("%s\n", req->protocol);
-    /*
+
     free(str);
     free(req->req_str);
     free(req);
-    */
 
     return 0;
 }
+*/
